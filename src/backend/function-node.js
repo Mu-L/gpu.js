@@ -1233,8 +1233,13 @@ class FunctionNode {
     }
 
     if (uNode.prefix) {
+      // parenthesized so it cannot fuse with a neighbouring operator:
+      // `a - -b` would otherwise emit `a--b`, which GLSL, WGSL and the cpu
+      // backend's JavaScript all read as a decrement (#874)
+      retArr.push('(');
       retArr.push(uNode.operator);
       this.astGeneric(uNode.argument, retArr);
+      retArr.push(')');
     } else {
       this.astGeneric(uNode.argument, retArr);
       retArr.push(uNode.operator);

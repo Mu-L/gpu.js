@@ -191,3 +191,18 @@ test('a kernel without Math.random carries no seed machinery', t => {
   t.notOk(/pcg/.test(kernel.assembleWGSL()), 'no generator');
   t.equal(kernel.paramsLayout.randomSeedOffset, null, 'no slot');
 });
+
+test('a negated operand never fuses into a decrement (#874)', t => {
+  // `a - -b` and a negative baked constant emitted `a--b` / `a--5.5`,
+  // which WGSL tokenizes as a decrement and rejects
+  const wgsl = translate(function (v) {
+    const a = v[this.thread.x];
+    return (a - -0.95) + (a - -a) + (- -a) + (a - this.constants.c) + (a - this.constants.i);
+  }, {
+    argumentTypes: ['Array'],
+    args: [[1, 2, 3, 4]],
+    constants: { c: -5.5, i: -3 },
+    constantTypes: { c: 'Float', i: 'Integer' },
+  });
+  t.notOk(/--/.test(wgsl), `no \`--\` in ${ wgsl.split('\n').filter(l => l.indexOf('user_a') !== -1).join(' ') }`);
+});

@@ -5,7 +5,7 @@
  * GPU Accelerated JavaScript
  *
  * @version 2.24.0
- * @date Wed Aug 05 2026 23:37:11 GMT+0800 (Singapore Standard Time)
+ * @date Thu Sep 24 2026 09:30:13 GMT+0800 (Singapore Standard Time)
  *
  * @license MIT
  * The MIT License
@@ -2977,8 +2977,10 @@
       astUnaryExpression(uNode, retArr) {
         if (this.checkAndUpconvertBitwiseUnary(uNode, retArr)) return retArr;
         if (uNode.prefix) {
+          retArr.push("(");
           retArr.push(uNode.operator);
           this.astGeneric(uNode.argument, retArr);
+          retArr.push(")");
         } else {
           this.astGeneric(uNode.argument, retArr);
           retArr.push(uNode.operator);
@@ -11547,15 +11549,16 @@
       }
       wgslFloat(value) {
         if (value === Infinity) return "0x1.fffffep+127";
-        if (value === -Infinity) return "-0x1.fffffep+127";
+        if (value === -Infinity) return "(-0x1.fffffep+127)";
         if (value > 34028234663852886e22) return "0x1.fffffep+127";
-        if (value < -34028234663852886e22) return "-0x1.fffffep+127";
-        const str = `${value}`;
-        if (str.indexOf(".") !== -1 || str.indexOf("e") !== -1 || str.indexOf("E") !== -1) return str;
-        return `${str}.0`;
+        if (value < -34028234663852886e22) return "(-0x1.fffffep+127)";
+        let str = `${value}`;
+        if (str.indexOf(".") === -1 && str.indexOf("e") === -1 && str.indexOf("E") === -1) str += ".0";
+        return value < 0 ? `(${str})` : str;
       }
       wgslInt(value) {
-        return `${Math.round(value)}`;
+        const int = Math.round(value);
+        return int < 0 ? `(${int})` : `${int}`;
       }
       mangleFunctionName(name) {
         return `fn_${utils.sanitizeName(name)}`;
@@ -12028,8 +12031,10 @@
           return retArr;
         }
         if (uNode.prefix) {
+          retArr.push("(");
           retArr.push(uNode.operator);
           this.astGeneric(uNode.argument, retArr);
+          retArr.push(")");
         } else {
           this.astGeneric(uNode.argument, retArr);
           retArr.push(uNode.operator);

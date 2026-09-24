@@ -29,14 +29,16 @@ class WGSLFunctionNode extends FunctionNode {
    */
   wgslFloat(value) {
     if (value === Infinity) return '0x1.fffffep+127';
-    if (value === -Infinity) return '-0x1.fffffep+127';
+    if (value === -Infinity) return '(-0x1.fffffep+127)';
     if (value > 3.4028234663852886e38) return '0x1.fffffep+127';
-    if (value < -3.4028234663852886e38) return '-0x1.fffffep+127';
-    const str = `${ value }`;
-    if (str.indexOf('.') !== -1 || str.indexOf('e') !== -1 || str.indexOf('E') !== -1) {
-      return str;
+    if (value < -3.4028234663852886e38) return '(-0x1.fffffep+127)';
+    let str = `${ value }`;
+    if (str.indexOf('.') === -1 && str.indexOf('e') === -1 && str.indexOf('E') === -1) {
+      str += '.0';
     }
-    return `${ str }.0`;
+    // a negative literal (a baked-in constant) is parenthesized so `a - c`
+    // cannot emit as the decrement `a--5.0`
+    return value < 0 ? `(${ str })` : str;
   }
 
   /**
@@ -44,7 +46,8 @@ class WGSLFunctionNode extends FunctionNode {
    * @returns {String}
    */
   wgslInt(value) {
-    return `${ Math.round(value) }`;
+    const int = Math.round(value);
+    return int < 0 ? `(${ int })` : `${ int }`;
   }
 
   /**
@@ -619,8 +622,13 @@ class WGSLFunctionNode extends FunctionNode {
       return retArr;
     }
     if (uNode.prefix) {
+      // parenthesized so it cannot fuse with a neighbouring operator:
+      // `a - -b` would otherwise emit `a--b`, which WGSL reads as a
+      // decrement (#874)
+      retArr.push('(');
       retArr.push(uNode.operator);
       this.astGeneric(uNode.argument, retArr);
+      retArr.push(')');
     } else {
       this.astGeneric(uNode.argument, retArr);
       retArr.push(uNode.operator);
