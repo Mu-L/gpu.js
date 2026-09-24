@@ -6,7 +6,8 @@ describe('issue #874 negated operand');
 // `a - -b` emitted the two minus signs back to back, `a--b`, which GLSL and
 // WGSL both tokenize as a decrement and reject. Minified kernels produce it
 // routinely (`a + 0.95` folds to `a - -0.95`), and so does a negative
-// constant baked into WGSL.
+// constant baked into WGSL. Every value here is exact at half precision, so
+// a low-precision mobile GPU cannot fail it on rounding alone.
 
 const MODES = [
   ['cpu', true],
@@ -18,12 +19,12 @@ const MODES = [
 
 function kernelSource(v) {
   const a = v[this.thread.x];
-  return (a - -0.95) + (a - -a) + (- -a) + (a + +a) + (a - this.constants.c) + (a - this.constants.i);
+  return (a - -0.75) + (a - -a) + (- -a) + (a + +a) + (a - this.constants.c) + (a - this.constants.i);
 }
 
 const input = [1, 2, 3, 4];
 const constants = { c: -5.5, i: -3 };
-const expected = input.map(a => (a - -0.95) + (a - -a) + (- -a) + (a + +a) + (a - constants.c) + (a - constants.i));
+const expected = input.map(a => (a - -0.75) + (a - -a) + (- -a) + (a + +a) + (a - constants.c) + (a - constants.i));
 
 function check(assert, result) {
   assert.equal(result.length, expected.length);
